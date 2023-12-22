@@ -401,7 +401,7 @@
 	<monster name="Winter wolf" file="Canines/winter_wolf.xml" />
 	<monster name="Wolf" file="Canines/wolf.xml" />
 	<monster name="Gnarlhound" file="Canines/gnarlhound.xml" />
-	<monster name="Hellhound" file="canines/hellhound.xml" />
+	<monster name="Hellhound" file="Canines/hellhound.xml" />
 
 	<!-- Chakoyas -->
 	<monster name="Chakoya Toolshaper" file="Chakoyas/chakoya_toolshaper.xml" />
@@ -727,9 +727,9 @@
 
 	<!--Machines-->
 	<monster name="Glooth Golem" file="Machines/glooth golem.xml" />
-	<monster name="Rustheap Golem" file="machines/rustheap golem.xml" />
-	<monster name="Walker" file="machines/walker.xml" />
-	<monster name="Metal Gargoyle" file="machines/metal gargoyle.xml" />
+	<monster name="Rustheap Golem" file="Machines/rustheap golem.xml" />
+	<monster name="Walker" file="Machines/walker.xml" />
+	<monster name="Metal Gargoyle" file="Machines/metal gargoyle.xml" />
 
 	<monster name="Minion Of Versperoth" file="Magma-Elementals/minion of versperoth.xml" />
 
@@ -998,7 +998,7 @@
 	<monster name="Horse1" file="Ungulates/horse(brown).xml" />
 	<monster name="Horse2" file="Ungulates/horse(fire).xml" />
 	<monster name="Horse3" file="Ungulates/horse(grey).xml" />
-	<monster name="Wild Horse" file="ungulates/horse(wild).xml" />
+	<monster name="Wild Horse" file="Ungulates/horse(wild).xml" />
 	<monster name="Mammoth" file="Ungulates/mammoth.xml" />
 	<monster name="Mushroom Sniffer" file="Ungulates/mushroom_sniffer.xml" />
 	<monster name="Pig" file="Ungulates/pig.xml" />
