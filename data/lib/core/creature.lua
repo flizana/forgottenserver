@@ -2,7 +2,7 @@ function Creature.getClosestFreePosition(self, position, maxRadius, mustBeReacha
 	maxRadius = maxRadius or 1
 
 	-- backward compatability (extended)
-	if maxRadius then
+	if maxRadius == true then
 		maxRadius = 2
 	end
 
@@ -19,7 +19,7 @@ function Creature.getClosestFreePosition(self, position, maxRadius, mustBeReacha
 			end
 
 			local tile = Tile(checkPosition)
-			if tile and tile:getCreatureCount() == 0 and not tile:hasProperty(CONST_PROP_IMMOVABLEBLOCKSOLID) and
+			if tile:getCreatureCount() == 0 and not tile:hasProperty(CONST_PROP_IMMOVABLEBLOCKSOLID) and
 				(not mustBeReachable or self:getPathTo(checkPosition)) then
 				return checkPosition
 			end
@@ -106,10 +106,6 @@ function Creature:addSummon(monster)
 	summon:setSkillLoss(false)
 	summon:setMaster(self)
 
-	if self:isPlayer() then
-		summon:getPosition():notifySummonAppear(summon)
-	end
-
 	return true
 end
 
@@ -169,41 +165,4 @@ function Creature:addDamageCondition(target, type, list, damage, period, rounds)
 
 	target:addCondition(condition)
 	return true
-end
-
-function Creature:canAccessPz()
-	if self:isMonster() or (self:isPlayer() and self:isPzLocked()) then
-		return false
-	end
-	return true
-end
-
-function Creature.getMonster(self)
-	return self:isMonster() and self or nil
-end
-
-function Creature.getKillers(self, onlyPlayers)
-	local killers = {}
-	local inFightTicks = configManager.getNumber(configKeys.PZ_LOCKED)
-	local timeNow = os.mtime()
-	local getCreature = onlyPlayers and Player or Creature
-	for cid, cb in pairs(self:getDamageMap()) do
-		local creature = getCreature(cid)
-		if creature and creature ~= self and (timeNow - cb.ticks) <= inFightTicks then
-			killers[#killers + 1] = {
-				creature = creature,
-				damage = cb.total
-			}
-		end
-	end
-
-	table.sort(killers, function(a, b) return a.damage > b.damage end)
-	for i, killer in pairs(killers) do
-		killers[i] = killer.creature
-	end
-	return killers
-end
-
-function Creature.removeStorageValue(self, key)
-	return self:setStorageValue(key, nil)
 end

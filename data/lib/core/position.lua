@@ -1,19 +1,3 @@
-local mt = rawgetmetatable("Position")
-
-function mt.__add(lhs, rhs)
-	local stackpos = lhs.stackpos or rhs.stackpos
-	return Position(lhs.x + (rhs.x or 0), lhs.y + (rhs.y or 0), lhs.z + (rhs.z or 0), stackpos)
-end
-
-function mt.__sub(lhs, rhs)
-	local stackpos = lhs.stackpos or rhs.stackpos
-	return Position(lhs.x - (rhs.x or 0), lhs.y - (rhs.y or 0), lhs.z - (rhs.z or 0), stackpos)
-end
-
-function mt.__concat(lhs, rhs) return tostring(lhs) .. tostring(rhs) end
-function mt.__eq(lhs, rhs) return lhs.x == rhs.x and lhs.y == rhs.y and lhs.z == rhs.z end
-function mt.__tostring(self) return string.format("Position(%d, %d, %d)", self.x, self.y, self.z) end
-
 Position.directionOffset = {
 	[DIRECTION_NORTH] = {x = 0, y = -1},
 	[DIRECTION_EAST] = {x = 1, y = 0},
@@ -25,14 +9,6 @@ Position.directionOffset = {
 	[DIRECTION_NORTHEAST] = {x = 1, y = -1}
 }
 
-local abs, max = math.abs, math.max
-function Position:getDistance(positionEx)
-	local dx = abs(self.x - positionEx.x)
-	local dy = abs(self.y - positionEx.y)
-	local dz = abs(self.z - positionEx.z)
-	return max(dx, dy, dz)
-end
-
 function Position:getNextPosition(direction, steps)
 	local offset = Position.directionOffset[direction]
 	if offset then
@@ -42,8 +18,12 @@ function Position:getNextPosition(direction, steps)
 	end
 end
 
+function Position.getTile(self)
+	return Tile(self)
+end
+
 function Position:moveUpstairs()
-	local swap = function(lhs, rhs)
+	local swap = function (lhs, rhs)
 		lhs.x, rhs.x = rhs.x, lhs.x
 		lhs.y, rhs.y = rhs.y, lhs.y
 		lhs.z, rhs.z = rhs.z, lhs.z
@@ -59,8 +39,7 @@ function Position:moveUpstairs()
 				direction = DIRECTION_WEST
 			end
 
-			local position = Position(self)
-			position:getNextPosition(direction)
+			local position = self + Position.directionOffset[direction]
 			toTile = Tile(position)
 			if toTile and toTile:isWalkable() then
 				swap(self, position)
@@ -88,19 +67,10 @@ function Position:isInRange(from, to)
 		}
 	}
 
-	if self.x >= zone.nW.x and self.x <= zone.sE.x
+	if  self.x >= zone.nW.x and self.x <= zone.sE.x
 	and self.y >= zone.nW.y and self.y <= zone.sE.y
 	and self.z >= zone.nW.z and self.z <= zone.sE.z then
 		return true
 	end
 	return false
-end
-
-function Position:notifySummonAppear(summon)
-	local spectators = Game.getSpectators(self)
-	for _, spectator in ipairs(spectators) do
-		if spectator:isMonster() and spectator ~= summon then
-			spectator:addTarget(summon)
-		end
-	end
 end

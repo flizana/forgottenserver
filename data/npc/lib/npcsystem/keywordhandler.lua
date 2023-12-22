@@ -1,21 +1,26 @@
 -- Advanced NPC System by Jiddo
 
-if not KeywordHandler then
+if KeywordHandler == nil then
+
 	KeywordNode = {
 		keywords = nil,
 		callback = nil,
 		parameters = nil,
 		children = nil,
-		parent = nil
+		parent = nil,
+		condition = nil,
+		action = nil
 	}
 
 	-- Created a new keywordnode with the given keywords, callback function and parameters and without any childNodes.
-	function KeywordNode:new(keys, func, param)
+	function KeywordNode:new(keys, func, param, condition, action)
 		local obj = {}
 		obj.keywords = keys
 		obj.callback = func
 		obj.parameters = param
 		obj.children = {}
+		obj.condition = condition
+		obj.action = action
 		setmetatable(obj, self)
 		self.__index = self
 		return obj
@@ -26,19 +31,51 @@ if not KeywordHandler then
 		return (not self.callback or self.callback(cid, message, self.keywords, self.parameters, self))
 	end
 
-	-- Returns true if message contains all patterns/strings found in keywords.
-	function KeywordNode:checkMessage(message)
-		if self.keywords.callback then
-			return self.keywords.callback(self.keywords, message)
+	function KeywordNode:processAction(cid)
+		if not self.action then
+			return
 		end
 
-		for _, v in ipairs(self.keywords) do
-			if type(v) == 'string' then
-				local a, b = string.find(message, v)
-				if not a or not b then
+		local player = Player(cid)
+		if not player then
+			return
+		end
+
+		self.action(player, self.parameters.npcHandler)
+	end
+
+	-- Returns true if message contains all patterns/strings found in keywords.
+	-- Returns true if message contains all patterns/strings found in keywords.
+	function KeywordNode:checkMessage(cid, message)
+		if self.keywords.callback then
+			local ret, data = self.keywords.callback(self.keywords, message)
+			if not ret then
+				return false
+			end
+
+			if self.condition and not self.condition(Player(cid), data) then
+				return false
+			end
+			return true
+		end
+
+		local data = {}
+		local last = 0
+		for _, keyword in ipairs(self.keywords) do
+			if type(keyword) == 'string' then
+				local a, b = string.find(message, keyword)
+				if a == nil or b == nil or a < last then
 					return false
 				end
+				if keyword:sub(1, 1) == '%' then
+					data[#data + 1] = tonumber(message:sub(a, b)) or nil
+				end
+				last = a
 			end
+		end
+
+		if self.condition and not self.condition(Player(cid), data) then
+			return false
 		end
 		return true
 	end
@@ -59,12 +96,11 @@ if not KeywordHandler then
 	end
 
 	-- Adds a childNode to this node. Creates the childNode based on the parameters (k = keywords, c = callback, p = parameters)
-	function KeywordNode:addChildKeyword(keywords, callback, parameters)
-		local new = KeywordNode:new(keywords, callback, parameters)
+	function KeywordNode:addChildKeyword(keywords, callback, parameters, condition, action)
+		local new = KeywordNode:new(keywords, callback, parameters, condition, action)
 		return self:addChildKeywordNode(new)
 	end
 
-	-- Adds an alias keyword. Should be used if you have to answer the same thing to several keywords.
 	function KeywordNode:addAliasKeyword(keywords)
 		if #self.children == 0 then
 			print('KeywordNode:addAliasKeyword no previous node found')
@@ -144,11 +180,12 @@ if not KeywordHandler then
 	function KeywordHandler:processNodeMessage(node, cid, message)
 		local messageLower = string.lower(message)
 		for i, childNode in pairs(node.children) do
-			if childNode:checkMessage(messageLower) then
+			if childNode:checkMessage(cid, messageLower) then
 				local oldLast = self.lastNode[cid]
 				self.lastNode[cid] = childNode
 				childNode.parent = node -- Make sure node is the parent of childNode (as one node can be parent to several nodes).
 				if childNode:processMessage(cid, message) then
+					childNode:processAction(cid)
 					return true
 				end
 				self.lastNode[cid] = oldLast
@@ -168,16 +205,15 @@ if not KeywordHandler then
 	end
 
 	-- Adds a new keyword to the root keywordnode. Returns the new node.
-	function KeywordHandler:addKeyword(keys, callback, parameters)
-		return self:getRoot():addChildKeyword(keys, callback, parameters)
+	function KeywordHandler:addKeyword(keys, callback, parameters, condition, action)
+		return self:getRoot():addChildKeyword(keys, callback, parameters, condition, action)
 	end
 
-	-- Adds an alias keyword for the previous node.
 	function KeywordHandler:addAliasKeyword(keys)
 		return self:getRoot():addAliasKeyword(keys)
 	end
 
-	-- Moves the current position in the keyword hierarchy steps upwards. Steps default value = 1.
+	-- Moves the current position in the keyword hierarchy steps upwards. Steps defalut value = 1.
 	function KeywordHandler:moveUp(cid, steps)
 		if not steps or type(steps) ~= "number" then
 			steps = 1
@@ -190,38 +226,5 @@ if not KeywordHandler then
 			self.lastNode[cid] = self.lastNode[cid]:getParent() or self:getRoot()
 		end
 		return self.lastNode[cid]
-	end
-
-	function KeywordHandler:addSpellKeyword(keys, parameters)
-		-- This function adds a new spell to a character.
-		--
-		-- @param keys - table of keywords that will trigger the function.
-		-- @param parameters - table containing the spellName, price, level and vocation.
-		-- @param parameters.npcHandler - NpcHandler object that the spellKeyword will be added to.
-		-- @param parameters.spellName - string name of the spell to be added.
-		-- @param parameters.price - integer cost of the spell.
-		-- @param parameters.level - integer level required to learn the spell.
-		-- @param parameters.vocation - integer or table of integers representing the vocation(s) allowed to learn the spell.
-		-- Example: keywordHandler:addSpellKeyword({"find person"}, {npcHandler = npcHandler, spellName = "Find Person", price = 80, level = 8, vocation = VOCATION_KNIGHT})
-
-		local keys = keys
-		keys.callback = FocusModule.messageMatcherDefault
-
-		local npcHandler, spellName, price, vocationId = parameters.npcHandler, parameters.spellName, parameters.price, parameters.vocation
-		local spellKeyword = self:addKeyword(keys, StdModule.say, {npcHandler = npcHandler, text = string.format("Do you want to learn the spell %s for %s?", spellName, price > 0 and price .. " gold" or "free")},
-			function(player)
-				local baseVocationId = player:getVocation():getBase():getId()
-				if type(vocationId) == 'table' then
-					-- Using a more efficient way to check if the player meets the vocation requirements
-					return table.find(vocationId, baseVocationId) ~= nil
-				else
-					return vocationId == baseVocationId
-				end
-			end
-		)
-
-		-- It is not necessary to check if the player already has the spell, the check is done in modules.lua
-		spellKeyword:addChildKeyword({"yes"}, StdModule.learnSpell, {npcHandler = npcHandler, spellName = spellName, level = parameters.level, price = price})
-		spellKeyword:addChildKeyword({"no"}, StdModule.say, {npcHandler = npcHandler, text = "Maybe next time.", reset = true})
 	end
 end

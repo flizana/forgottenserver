@@ -27,5 +27,6 @@ function onUpdateDatabase()
 	db.query("ALTER TABLE server_config CONVERT TO CHARACTER SET utf8")
 	db.query("ALTER TABLE tile_store CONVERT TO CHARACTER SET utf8")
 	db.query("ALTER TABLE towns CONVERT TO CHARACTER SET utf8")
+
 	return true
 end
